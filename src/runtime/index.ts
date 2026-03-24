@@ -1,4 +1,4 @@
-﻿export { destroyVersionUpdate, initVersionUpdate, refreshVersionUpdateTexts, requestVersionUpdate, setVersionUpdateRuntimeEnv, useVersionUpdate } from './service'
+export { destroyVersionUpdate, initVersionUpdate, refreshVersionUpdateTexts, requestVersionUpdate, setVersionUpdateRuntimeEnv, useVersionUpdate } from './service.js'
 export type {
   VersionDialogOptions,
   VersionManifest,
