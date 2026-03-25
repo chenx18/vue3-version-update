@@ -1,4 +1,4 @@
-﻿import { cp, mkdir, rm } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename)
 const packageRoot = path.resolve(__dirname, '..')
 const nodeExec = process.execPath
 const tscCli = path.resolve(packageRoot, 'node_modules/typescript/bin/tsc')
+const viteCli = path.resolve(packageRoot, 'node_modules/vite/bin/vite.js')
 
 function run(command, args, cwd) {
   return new Promise((resolve, reject) => {
@@ -22,17 +23,32 @@ function run(command, args, cwd) {
   })
 }
 
-async function copyVueArtifacts() {
+async function copyTypeArtifacts() {
   await mkdir(path.resolve(packageRoot, 'dist'), { recursive: true })
-  await cp(path.resolve(packageRoot, 'src/runtime/VersionUpdateIndicator.vue'), path.resolve(packageRoot, 'dist/VersionUpdateIndicator.vue'))
-  await cp(path.resolve(packageRoot, 'src/runtime/VersionUpdateIndicator.vue.d.ts'), path.resolve(packageRoot, 'dist/VersionUpdateIndicator.vue.d.ts'))
+  await cp(
+    path.resolve(packageRoot, 'src/runtime/VersionUpdateIndicator.vue.d.ts'),
+    path.resolve(packageRoot, 'dist/VersionUpdateIndicator.vue.d.ts')
+  )
+}
+
+async function injectCssImport() {
+  const entryPath = path.resolve(packageRoot, 'dist/index.js')
+  const entryContent = await readFile(entryPath, 'utf8')
+  const cssImport = `import './vue3-version-update.css';\n`
+
+  if (entryContent.startsWith(cssImport)) {
+    return
+  }
+
+  await writeFile(entryPath, `${cssImport}${entryContent}`, 'utf8')
 }
 
 async function build() {
   await rm(path.resolve(packageRoot, 'dist'), { recursive: true, force: true })
-  await run(nodeExec, [tscCli, '-p', 'tsconfig.build.json'], packageRoot)
+  await run(nodeExec, [viteCli, 'build', '--config', 'vite.runtime.config.ts'], packageRoot)
   await run(nodeExec, [tscCli, '-p', 'tsconfig.types.json'], packageRoot)
-  await copyVueArtifacts()
+  await copyTypeArtifacts()
+  await injectCssImport()
 }
 
 build().catch((error) => {

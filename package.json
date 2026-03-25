@@ -1,6 +1,6 @@
 {
   "name": "vue3-version-update",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Vue3 前端版本更新运行时公共包，统一处理版本探测、更新提示与待更新标识。",
   "type": "module",
   "license": "MIT",
@@ -33,6 +33,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "sass-embedded": "^1.98.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vue": "^3.5.13"
@@ -42,6 +44,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./style.css": "./dist/vue3-version-update.css",
     "./package.json": "./package.json"
   }
 }
