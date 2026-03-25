@@ -31,8 +31,11 @@ export interface VersionUpdateTexts {
   indicatorTitle?: string
   cardTitle?: string
   cardMessage?: string
+  buildTimeLabel?: string
   deferOptionText?: string
 }
+
+export type VersionUpdateTimeFormatter = (buildTime: string) => string
 
 export interface VersionUpdateIndicatorSlotProps {
   requestVersionUpdate: () => void
@@ -66,6 +69,7 @@ export interface VersionUpdateOptions {
   debug?: boolean
   runtimeEnv?: VersionRuntimeEnv
   devMock?: boolean
+  timeFormatter?: VersionUpdateTimeFormatter
   texts?: VersionUpdateTexts | VersionUpdateTextsResolver
   onUpdateDetected?: (context: VersionUpdateContext) => void | Promise<void>
   onUpdateDeferred?: (context: VersionUpdateContext) => void | Promise<void>
@@ -98,5 +102,6 @@ export interface VersionUpdateState {
   indicatorTitle: string
   cardTitle: string
   cardMessage: string
+  buildTimeLabel: string
   deferOptionText: string
 }

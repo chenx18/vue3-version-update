@@ -16,6 +16,7 @@ export type {
   VersionUpdateAnchor,
   VersionUpdateIndicatorMode,
   VersionUpdateIndicatorSlotProps,
+  VersionUpdateTimeFormatter,
   VersionUpdateOptions,
   VersionUpdateState,
   VersionUpdateTexts,

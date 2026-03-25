@@ -58,7 +58,7 @@
               <div class="version-update-panel__header">
                 <div>
                   <div class="version-update-panel__title">{{ cardTitle }}</div>
-                  <div v-if="latestVersion" class="version-update-panel__version">v{{ latestVersion }}</div>
+                  <div v-if="showVersion && latestVersion" class="version-update-panel__version">v{{ latestVersion }}</div>
                 </div>
                 <button class="version-update-panel__close" type="button" aria-label="关闭更新卡片" @click="closePanel">
                   <span aria-hidden="true">×</span>
@@ -67,8 +67,8 @@
 
               <div class="version-update-panel__message">{{ cardMessage }}</div>
 
-              <div v-if="latestBuildTime" class="version-update-panel__meta">
-                <span>发布时间</span>
+              <div v-if="showBuildTime && latestBuildTime" class="version-update-panel__meta">
+                <span>{{ buildTimeLabel }}</span>
                 <span>{{ latestBuildTime }}</span>
               </div>
 
@@ -145,7 +145,7 @@
               <div class="version-update-panel__header">
                 <div>
                   <div class="version-update-panel__title">{{ cardTitle }}</div>
-                  <div v-if="latestVersion" class="version-update-panel__version">v{{ latestVersion }}</div>
+                  <div v-if="showVersion && latestVersion" class="version-update-panel__version">v{{ latestVersion }}</div>
                 </div>
                 <button class="version-update-panel__close" type="button" aria-label="关闭更新卡片" @click="closePanel">
                   <span aria-hidden="true">×</span>
@@ -154,8 +154,8 @@
 
               <div class="version-update-panel__message">{{ cardMessage }}</div>
 
-              <div v-if="latestBuildTime" class="version-update-panel__meta">
-                <span>发布时间</span>
+              <div v-if="showBuildTime && latestBuildTime" class="version-update-panel__meta">
+                <span>{{ buildTimeLabel }}</span>
                 <span>{{ latestBuildTime }}</span>
               </div>
 
@@ -200,6 +200,8 @@ const props = withDefaults(
     mode?: VersionUpdateIndicatorMode
     autoOpen?: boolean
     showDeferOption?: boolean
+    showBuildTime?: boolean
+    showVersion?: boolean
     deferOptionDuration?: number
     anchor?: VersionUpdateAnchor
     sideTabText?: string
@@ -208,6 +210,8 @@ const props = withDefaults(
     mode: 'icon',
     autoOpen: true,
     showDeferOption: false,
+    showBuildTime: false,
+    showVersion: false,
     deferOptionDuration: DEFAULT_DEFER_OPTION_DURATION,
     sideTabText: '待更新'
   }
@@ -226,6 +230,7 @@ const {
   anchor: defaultAnchor,
   cardTitle,
   cardMessage,
+  buildTimeLabel,
   confirmText,
   cancelText,
   deferOptionText
@@ -239,6 +244,8 @@ const mode = computed(() => props.mode)
 const resolvedAnchor = computed(() => props.anchor ?? defaultAnchor.value)
 const isRightEdgeAnchor = computed(() => resolvedAnchor.value === 'right-edge')
 const showDeferOption = computed(() => props.showDeferOption)
+const showBuildTime = computed(() => props.showBuildTime)
+const showVersion = computed(() => props.showVersion)
 const panelWidth = computed(() => PANEL_WIDTH)
 const rightEdgeShellWidth = computed(() => panelWidth.value + SIDE_TAB_WIDTH)
 const showPanelArrow = computed(() => !isRightEdgeAnchor.value)

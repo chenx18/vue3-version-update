@@ -7,6 +7,7 @@ import type {
   VersionUpdateContext,
   VersionUpdateOptions,
   VersionUpdateState,
+  VersionUpdateTimeFormatter,
   VersionUpdateTexts,
   VersionUpdateTextsResolver
 } from './types'
@@ -30,6 +31,7 @@ const DEFAULT_TEXTS: Required<VersionUpdateTexts> = {
   indicatorTitle: '检测到新版本，点击查看详情',
   cardTitle: '系统更新',
   cardMessage: '检测到系统已有新版本发布，建议在方便时刷新以获取最新功能与修复。',
+  buildTimeLabel: '发布时间',
   deferOptionText: '2小时内不再提醒'
 }
 
@@ -58,6 +60,7 @@ const state = reactive<VersionUpdateState>({
   indicatorTitle: DEFAULT_TEXTS.indicatorTitle,
   cardTitle: DEFAULT_TEXTS.cardTitle,
   cardMessage: DEFAULT_TEXTS.cardMessage,
+  buildTimeLabel: DEFAULT_TEXTS.buildTimeLabel,
   deferOptionText: DEFAULT_TEXTS.deferOptionText
 })
 
@@ -73,12 +76,13 @@ const runtimeOptions: Required<
     | 'refreshStrategy'
     | 'debug'
   >
-> &
+  > &
   Pick<
     VersionUpdateOptions,
     | 'versionUrl'
     | 'storagePrefix'
     | 'devMock'
+    | 'timeFormatter'
     | 'onUpdateDetected'
     | 'onUpdateDeferred'
     | 'onUpdateConfirmed'
@@ -99,6 +103,7 @@ const runtimeOptions: Required<
   storagePrefix: DEFAULT_STORAGE_PREFIX,
   runtimeEnv: {},
   devMock: false,
+  timeFormatter: undefined,
   texts: DEFAULT_TEXTS,
   onUpdateDetected: undefined,
   onUpdateDeferred: undefined,
@@ -123,8 +128,9 @@ function getRuntimeEnv() {
   const devMockEnabled = runtimeOptions.devMock && isDevMockEnabled()
   return {
     version: runtimeOptions.runtimeEnv.version || readGlobalString('__APP_VERSION__'),
-    buildId:
-      runtimeOptions.runtimeEnv.buildId || readGlobalString('__APP_BUILD_ID__') || (devMockEnabled ? DEV_MOCK_BUILD_ID : ''),
+    buildId: devMockEnabled
+      ? DEV_MOCK_BUILD_ID
+      : runtimeOptions.runtimeEnv.buildId || readGlobalString('__APP_BUILD_ID__'),
     buildTime: runtimeOptions.runtimeEnv.buildTime || readGlobalString('__APP_BUILD_TIME__'),
     baseUrl: runtimeOptions.runtimeEnv.baseUrl || DEFAULT_BASE_URL
   }
@@ -165,6 +171,18 @@ function resolveTexts(): Required<VersionUpdateTexts> {
   }
 }
 
+function formatBuildTime(buildTime?: string) {
+  if (!buildTime) {
+    return ''
+  }
+
+  if (runtimeOptions.timeFormatter) {
+    return runtimeOptions.timeFormatter(buildTime)
+  }
+
+  return buildTime
+}
+
 function syncTextState() {
   const texts = resolveTexts()
   state.title = texts.title
@@ -175,6 +193,7 @@ function syncTextState() {
   state.indicatorTitle = texts.indicatorTitle
   state.cardTitle = texts.cardTitle
   state.cardMessage = texts.cardMessage
+  state.buildTimeLabel = texts.buildTimeLabel
   state.deferOptionText = texts.deferOptionText
 }
 
@@ -350,7 +369,7 @@ function updatePendingState(manifest: VersionManifest) {
   state.indicatorVisible = state.enableIndicator
   state.latestBuildId = manifest.buildId
   state.latestVersion = manifest.version || ''
-  state.latestBuildTime = manifest.buildTime || ''
+  state.latestBuildTime = formatBuildTime(manifest.buildTime)
 }
 
 async function emitDetected(manifest: VersionManifest) {
@@ -492,6 +511,7 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
   runtimeOptions.refreshStrategy = options.refreshStrategy ?? 'auto'
   runtimeOptions.debug = options.debug ?? false
   runtimeOptions.devMock = options.devMock ?? false
+  runtimeOptions.timeFormatter = options.timeFormatter
   runtimeOptions.runtimeEnv = {
     ...runtimeOptions.runtimeEnv,
     ...(options.runtimeEnv || {})

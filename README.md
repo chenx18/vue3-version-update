@@ -122,6 +122,7 @@ interface VersionUpdateOptions {
   refreshStrategy?: 'auto' | 'self' | 'top' | 'custom'
   debug?: boolean
   devMock?: boolean
+  timeFormatter?: (buildTime: string) => string
   runtimeEnv?: {
     version?: string
     buildId?: string
@@ -177,6 +178,10 @@ interface VersionUpdateOptions {
   是否启用开发环境 mock 预览能力。
   开启后，访问 `?__mock_version_update=1` 会继续请求 `version.json`，但运行时会临时伪造一个旧的本地构建标识，并拦截真实刷新，方便预览更新交互。
 
+- `timeFormatter`
+  自定义发布时间格式化函数。
+  适合把 ISO 时间转为本地展示格式，也适合接入业务项目自己的多语言时间格式化逻辑。
+
 - `runtimeEnv`
   当前运行环境版本信息。
 
@@ -206,6 +211,8 @@ interface Props {
   mode?: 'icon' | 'tag'
   autoOpen?: boolean
   showDeferOption?: boolean
+  showBuildTime?: boolean
+  showVersion?: boolean
   deferOptionDuration?: number
   anchor?: 'header' | 'right-edge'
   sideTabText?: string
@@ -224,6 +231,14 @@ interface Props {
 
 - `showDeferOption`
   是否显示“2小时内不再提醒”选项。
+  默认 `false`。
+
+- `showBuildTime`
+  是否显示发布时间。
+  默认 `false`。
+
+- `showVersion`
+  是否显示版本号。
   默认 `false`。
 
 - `deferOptionDuration`
