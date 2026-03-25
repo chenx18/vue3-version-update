@@ -36,14 +36,16 @@ npm install vue3-version-update
 ```ts
 import { initVersionUpdate } from 'vue3-version-update'
 
-initVersionUpdate()
+initVersionUpdate({
+  anchor: 'right-edge'
+})
 ```
 
 ### 2. 在布局中放置更新入口
 
 ```vue
 <template>
-  <VersionUpdateIndicator v-if="indicatorVisible" anchor="header" />
+  <VersionUpdateIndicator v-if="indicatorVisible" />
 </template>
 
 <script setup lang="ts">
@@ -114,10 +116,12 @@ interface VersionUpdateOptions {
   enableIndicator?: boolean
   enableFocusCheck?: boolean
   enableVisibilityCheck?: boolean
+  anchor?: 'header' | 'right-edge'
   versionUrl?: string | (() => string)
   storagePrefix?: string
   refreshStrategy?: 'auto' | 'self' | 'top' | 'custom'
   debug?: boolean
+  devMock?: boolean
   runtimeEnv?: {
     version?: string
     buildId?: string
@@ -149,6 +153,10 @@ interface VersionUpdateOptions {
 - `enableVisibilityCheck`
   页面从后台切回前台时是否检查版本。
 
+- `anchor`
+  默认展示方案。
+  初始化后，`VersionUpdateIndicator` 不传 `anchor` 时会自动使用这里的值。
+
 - `versionUrl`
   版本清单地址，默认 `version.json`。
 
@@ -164,6 +172,10 @@ interface VersionUpdateOptions {
 
 - `debug`
   是否输出调试日志。
+
+- `devMock`
+  是否启用开发环境 mock 预览能力。
+  开启后，访问 `?__mock_version_update=1` 会继续请求 `version.json`，但运行时会临时伪造一个旧的本地构建标识，并拦截真实刷新，方便预览更新交互。
 
 - `runtimeEnv`
   当前运行环境版本信息。
@@ -193,6 +205,7 @@ interface VersionUpdateOptions {
 interface Props {
   mode?: 'icon' | 'tag'
   autoOpen?: boolean
+  showDeferOption?: boolean
   deferOptionDuration?: number
   anchor?: 'header' | 'right-edge'
   sideTabText?: string
@@ -208,6 +221,10 @@ interface Props {
 
 - `autoOpen`
   检测到新版本后，是否自动展开当前入口对应的面板。
+
+- `showDeferOption`
+  是否显示“2小时内不再提醒”选项。
+  默认 `false`。
 
 - `deferOptionDuration`
   勾选“2小时内不再提醒”时，实际写入的冷却时间。

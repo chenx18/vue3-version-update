@@ -72,7 +72,7 @@
                 <span>{{ latestBuildTime }}</span>
               </div>
 
-              <label class="version-update-panel__defer-option">
+              <label v-if="showDeferOption" class="version-update-panel__defer-option">
                 <input v-model="suppressAutoOpen" type="checkbox" />
                 <span>{{ deferOptionText }}</span>
               </label>
@@ -159,7 +159,7 @@
                 <span>{{ latestBuildTime }}</span>
               </div>
 
-              <label class="version-update-panel__defer-option">
+              <label v-if="showDeferOption" class="version-update-panel__defer-option">
                 <input v-model="suppressAutoOpen" type="checkbox" />
                 <span>{{ deferOptionText }}</span>
               </label>
@@ -199,6 +199,7 @@ const props = withDefaults(
   defineProps<{
     mode?: VersionUpdateIndicatorMode
     autoOpen?: boolean
+    showDeferOption?: boolean
     deferOptionDuration?: number
     anchor?: VersionUpdateAnchor
     sideTabText?: string
@@ -206,8 +207,8 @@ const props = withDefaults(
   {
     mode: 'icon',
     autoOpen: true,
+    showDeferOption: false,
     deferOptionDuration: DEFAULT_DEFER_OPTION_DURATION,
-    anchor: 'header',
     sideTabText: '待更新'
   }
 )
@@ -222,6 +223,7 @@ const {
   latestBuildId,
   latestBuildTime,
   remindAt,
+  anchor: defaultAnchor,
   cardTitle,
   cardMessage,
   confirmText,
@@ -234,7 +236,9 @@ defineSlots<{
 }>()
 
 const mode = computed(() => props.mode)
-const isRightEdgeAnchor = computed(() => props.anchor === 'right-edge')
+const resolvedAnchor = computed(() => props.anchor ?? defaultAnchor.value)
+const isRightEdgeAnchor = computed(() => resolvedAnchor.value === 'right-edge')
+const showDeferOption = computed(() => props.showDeferOption)
 const panelWidth = computed(() => PANEL_WIDTH)
 const rightEdgeShellWidth = computed(() => panelWidth.value + SIDE_TAB_WIDTH)
 const showPanelArrow = computed(() => !isRightEdgeAnchor.value)

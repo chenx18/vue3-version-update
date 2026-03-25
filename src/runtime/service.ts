@@ -1,6 +1,7 @@
 ﻿import { reactive, readonly, toRefs } from 'vue'
 import type {
   VersionManifest,
+  VersionUpdateAnchor,
   VersionRefreshStrategy,
   VersionRuntimeEnv,
   VersionUpdateContext,
@@ -16,6 +17,9 @@ const DEFAULT_POLL_INTERVAL = 5 * 60 * 1000
 const DEFAULT_REMIND_DELAY = 10 * 60 * 1000
 const DEFAULT_VERSION_URL = 'version.json'
 const DEFAULT_BASE_URL = '/'
+const DEFAULT_ANCHOR: VersionUpdateAnchor = 'header'
+const DEV_MOCK_QUERY_KEY = '__mock_version_update'
+const DEV_MOCK_BUILD_ID = 'mock-current-build'
 
 const DEFAULT_TEXTS: Required<VersionUpdateTexts> = {
   title: '版本更新提示',
@@ -43,6 +47,7 @@ const state = reactive<VersionUpdateState>({
   enableIndicator: true,
   enableFocusCheck: true,
   enableVisibilityCheck: true,
+  anchor: DEFAULT_ANCHOR,
   refreshStrategy: 'auto',
   debug: false,
   title: DEFAULT_TEXTS.title,
@@ -62,6 +67,7 @@ const runtimeOptions: Required<
         | 'enableIndicator'
     | 'enableFocusCheck'
     | 'enableVisibilityCheck'
+    | 'anchor'
     | 'pollInterval'
     | 'remindDelay'
     | 'refreshStrategy'
@@ -72,6 +78,7 @@ const runtimeOptions: Required<
     VersionUpdateOptions,
     | 'versionUrl'
     | 'storagePrefix'
+    | 'devMock'
     | 'onUpdateDetected'
     | 'onUpdateDeferred'
     | 'onUpdateConfirmed'
@@ -83,6 +90,7 @@ const runtimeOptions: Required<
   enableIndicator: true,
   enableFocusCheck: true,
   enableVisibilityCheck: true,
+  anchor: DEFAULT_ANCHOR,
   pollInterval: DEFAULT_POLL_INTERVAL,
   remindDelay: DEFAULT_REMIND_DELAY,
   refreshStrategy: 'auto',
@@ -90,6 +98,7 @@ const runtimeOptions: Required<
   versionUrl: DEFAULT_VERSION_URL,
   storagePrefix: DEFAULT_STORAGE_PREFIX,
   runtimeEnv: {},
+  devMock: false,
   texts: DEFAULT_TEXTS,
   onUpdateDetected: undefined,
   onUpdateDeferred: undefined,
@@ -101,15 +110,21 @@ let timerId: number | null = null
 let focusHandler: (() => void) | null = null
 let visibilityHandler: (() => void) | null = null
 
+function isDevMockEnabled() {
+  return new URLSearchParams(window.location.search).get(DEV_MOCK_QUERY_KEY) === '1'
+}
+
 function readGlobalString(name: '__APP_VERSION__' | '__APP_BUILD_ID__' | '__APP_BUILD_TIME__') {
   const value = (globalThis as Record<string, unknown>)[name]
   return typeof value === 'string' ? value : ''
 }
 
 function getRuntimeEnv() {
+  const devMockEnabled = runtimeOptions.devMock && isDevMockEnabled()
   return {
     version: runtimeOptions.runtimeEnv.version || readGlobalString('__APP_VERSION__'),
-    buildId: runtimeOptions.runtimeEnv.buildId || readGlobalString('__APP_BUILD_ID__'),
+    buildId:
+      runtimeOptions.runtimeEnv.buildId || readGlobalString('__APP_BUILD_ID__') || (devMockEnabled ? DEV_MOCK_BUILD_ID : ''),
     buildTime: runtimeOptions.runtimeEnv.buildTime || readGlobalString('__APP_BUILD_TIME__'),
     baseUrl: runtimeOptions.runtimeEnv.baseUrl || DEFAULT_BASE_URL
   }
@@ -306,6 +321,11 @@ async function applyUpdate(buildId: string) {
     return
   }
 
+  if (runtimeOptions.devMock && isDevMockEnabled()) {
+    logDebug('开发 mock 模式下拦截真实刷新', { buildId })
+    return
+  }
+
   if (refreshStrategy === 'custom') {
     console.warn('[version-update] refreshStrategy 已设置为 custom，但未提供 onRefresh，已回退为自动策略')
     if (context.isEmbedded) {
@@ -466,10 +486,12 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
   runtimeOptions.enableIndicator = options.enableIndicator ?? true
   runtimeOptions.enableFocusCheck = options.enableFocusCheck ?? true
   runtimeOptions.enableVisibilityCheck = options.enableVisibilityCheck ?? true
+  runtimeOptions.anchor = options.anchor ?? DEFAULT_ANCHOR
   runtimeOptions.versionUrl = options.versionUrl ?? DEFAULT_VERSION_URL
   runtimeOptions.storagePrefix = options.storagePrefix ?? DEFAULT_STORAGE_PREFIX
   runtimeOptions.refreshStrategy = options.refreshStrategy ?? 'auto'
   runtimeOptions.debug = options.debug ?? false
+  runtimeOptions.devMock = options.devMock ?? false
   runtimeOptions.runtimeEnv = {
     ...runtimeOptions.runtimeEnv,
     ...(options.runtimeEnv || {})
@@ -486,6 +508,7 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
   state.enableIndicator = runtimeOptions.enableIndicator
   state.enableFocusCheck = runtimeOptions.enableFocusCheck
   state.enableVisibilityCheck = runtimeOptions.enableVisibilityCheck
+  state.anchor = runtimeOptions.anchor
   state.refreshStrategy = runtimeOptions.refreshStrategy
   state.debug = runtimeOptions.debug
   syncTextState()
@@ -496,10 +519,12 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
     enableIndicator: state.enableIndicator,
     enableFocusCheck: state.enableFocusCheck,
     enableVisibilityCheck: state.enableVisibilityCheck,
+    anchor: state.anchor,
     refreshStrategy: state.refreshStrategy,
     versionUrl: runtimeOptions.versionUrl,
     storagePrefix: runtimeOptions.storagePrefix,
     runtimeEnv: getRuntimeEnv(),
+    devMock: runtimeOptions.devMock,
     hasDynamicTexts: typeof runtimeOptions.texts === 'function'
   })
 

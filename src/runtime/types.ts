@@ -59,11 +59,13 @@ export interface VersionUpdateOptions {
   enableIndicator?: boolean
   enableFocusCheck?: boolean
   enableVisibilityCheck?: boolean
+  anchor?: VersionUpdateAnchor
   versionUrl?: string | (() => string)
   storagePrefix?: string
   refreshStrategy?: VersionRefreshStrategy
   debug?: boolean
   runtimeEnv?: VersionRuntimeEnv
+  devMock?: boolean
   texts?: VersionUpdateTexts | VersionUpdateTextsResolver
   onUpdateDetected?: (context: VersionUpdateContext) => void | Promise<void>
   onUpdateDeferred?: (context: VersionUpdateContext) => void | Promise<void>
@@ -85,6 +87,7 @@ export interface VersionUpdateState {
   enableIndicator: boolean
   enableFocusCheck: boolean
   enableVisibilityCheck: boolean
+  anchor: VersionUpdateAnchor
   refreshStrategy: VersionRefreshStrategy
   debug: boolean
   title: string
