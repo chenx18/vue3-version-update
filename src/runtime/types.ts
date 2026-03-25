@@ -1,10 +1,12 @@
-﻿export interface VersionManifest {
-  version: string
-  buildTime: string
+export interface VersionManifest {
+  version?: string
+  buildTime?: string
   buildId: string
 }
 
 export type VersionRefreshStrategy = 'auto' | 'self' | 'top' | 'custom'
+export type VersionUpdateIndicatorMode = 'icon' | 'tag'
+export type VersionUpdateAnchor = 'header' | 'right-edge'
 
 export interface VersionRuntimeEnv {
   version?: string
@@ -20,13 +22,6 @@ export interface VersionUpdateContext {
   isEmbedded: boolean
 }
 
-export interface VersionDialogOptions {
-  title: string
-  message: string
-  confirmText: string
-  cancelText: string
-}
-
 export interface VersionUpdateTexts {
   title?: string
   message?: string
@@ -34,6 +29,26 @@ export interface VersionUpdateTexts {
   cancelText?: string
   indicatorText?: string
   indicatorTitle?: string
+  cardTitle?: string
+  cardMessage?: string
+  deferOptionText?: string
+}
+
+export interface VersionUpdateIndicatorSlotProps {
+  requestVersionUpdate: () => void
+  confirmVersionUpdate: () => void
+  deferVersionUpdate: (duration?: number) => void
+  openPanel: () => void
+  closePanel: () => void
+  panelVisible: boolean
+  indicatorTitle: string
+  indicatorText: string
+  hasPendingUpdate: boolean
+  indicatorVisible: boolean
+  latestVersion: string
+  latestBuildId: string
+  latestBuildTime: string
+  remindAt: number
 }
 
 export type VersionUpdateTextsResolver = () => VersionUpdateTexts
@@ -41,7 +56,6 @@ export type VersionUpdateTextsResolver = () => VersionUpdateTexts
 export interface VersionUpdateOptions {
   pollInterval?: number
   remindDelay?: number
-  enableDialog?: boolean
   enableIndicator?: boolean
   enableFocusCheck?: boolean
   enableVisibilityCheck?: boolean
@@ -51,7 +65,6 @@ export interface VersionUpdateOptions {
   debug?: boolean
   runtimeEnv?: VersionRuntimeEnv
   texts?: VersionUpdateTexts | VersionUpdateTextsResolver
-  dialogRenderer?: (options: VersionDialogOptions, context: VersionUpdateContext) => Promise<boolean> | boolean
   onUpdateDetected?: (context: VersionUpdateContext) => void | Promise<void>
   onUpdateDeferred?: (context: VersionUpdateContext) => void | Promise<void>
   onUpdateConfirmed?: (context: VersionUpdateContext) => void | Promise<void>
@@ -61,20 +74,26 @@ export interface VersionUpdateOptions {
 export interface VersionUpdateState {
   initialized: boolean
   checking: boolean
-  dialogVisible: boolean
   hasPendingUpdate: boolean
   indicatorVisible: boolean
   latestBuildId: string
   latestVersion: string
   latestBuildTime: string
+  remindAt: number
   pollInterval: number
   remindDelay: number
-  enableDialog: boolean
   enableIndicator: boolean
   enableFocusCheck: boolean
   enableVisibilityCheck: boolean
   refreshStrategy: VersionRefreshStrategy
   debug: boolean
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
   indicatorText: string
   indicatorTitle: string
+  cardTitle: string
+  cardMessage: string
+  deferOptionText: string
 }

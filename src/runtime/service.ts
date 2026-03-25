@@ -1,6 +1,5 @@
 ﻿import { reactive, readonly, toRefs } from 'vue'
 import type {
-  VersionDialogOptions,
   VersionManifest,
   VersionRefreshStrategy,
   VersionRuntimeEnv,
@@ -17,43 +16,50 @@ const DEFAULT_POLL_INTERVAL = 5 * 60 * 1000
 const DEFAULT_REMIND_DELAY = 10 * 60 * 1000
 const DEFAULT_VERSION_URL = 'version.json'
 const DEFAULT_BASE_URL = '/'
-const DEFAULT_DIALOG_NAMESPACE = 'version-update-dialog'
 
 const DEFAULT_TEXTS: Required<VersionUpdateTexts> = {
   title: '版本更新提示',
   message: '检测到系统已有新版本发布。立即更新会刷新当前页面，稍后更新可在合适的时候再刷新。',
   confirmText: '立即更新',
   cancelText: '稍后更新',
-  indicatorText: '待更新',
-  indicatorTitle: '检测到新版本，点击查看更新'
+  indicatorText: '立即更新',
+  indicatorTitle: '检测到新版本，点击查看详情',
+  cardTitle: '系统更新',
+  cardMessage: '检测到系统已有新版本发布，建议在方便时刷新以获取最新功能与修复。',
+  deferOptionText: '2小时内不再提醒'
 }
 
 const state = reactive<VersionUpdateState>({
   initialized: false,
   checking: false,
-  dialogVisible: false,
   hasPendingUpdate: false,
   indicatorVisible: false,
   latestBuildId: '',
   latestVersion: '',
   latestBuildTime: '',
+  remindAt: 0,
   pollInterval: DEFAULT_POLL_INTERVAL,
   remindDelay: DEFAULT_REMIND_DELAY,
-  enableDialog: true,
   enableIndicator: true,
   enableFocusCheck: true,
   enableVisibilityCheck: true,
   refreshStrategy: 'auto',
   debug: false,
+  title: DEFAULT_TEXTS.title,
+  message: DEFAULT_TEXTS.message,
+  confirmText: DEFAULT_TEXTS.confirmText,
+  cancelText: DEFAULT_TEXTS.cancelText,
   indicatorText: DEFAULT_TEXTS.indicatorText,
-  indicatorTitle: DEFAULT_TEXTS.indicatorTitle
+  indicatorTitle: DEFAULT_TEXTS.indicatorTitle,
+  cardTitle: DEFAULT_TEXTS.cardTitle,
+  cardMessage: DEFAULT_TEXTS.cardMessage,
+  deferOptionText: DEFAULT_TEXTS.deferOptionText
 })
 
 const runtimeOptions: Required<
   Pick<
     VersionUpdateOptions,
-    | 'enableDialog'
-    | 'enableIndicator'
+        | 'enableIndicator'
     | 'enableFocusCheck'
     | 'enableVisibilityCheck'
     | 'pollInterval'
@@ -66,7 +72,6 @@ const runtimeOptions: Required<
     VersionUpdateOptions,
     | 'versionUrl'
     | 'storagePrefix'
-    | 'dialogRenderer'
     | 'onUpdateDetected'
     | 'onUpdateDeferred'
     | 'onUpdateConfirmed'
@@ -75,7 +80,6 @@ const runtimeOptions: Required<
     runtimeEnv: VersionRuntimeEnv
     texts: VersionUpdateTexts | VersionUpdateTextsResolver
   } = {
-  enableDialog: true,
   enableIndicator: true,
   enableFocusCheck: true,
   enableVisibilityCheck: true,
@@ -87,7 +91,6 @@ const runtimeOptions: Required<
   storagePrefix: DEFAULT_STORAGE_PREFIX,
   runtimeEnv: {},
   texts: DEFAULT_TEXTS,
-  dialogRenderer: undefined,
   onUpdateDetected: undefined,
   onUpdateDeferred: undefined,
   onUpdateConfirmed: undefined,
@@ -132,7 +135,7 @@ function logDebug(message: string, payload?: unknown) {
 function getUpdateContext(manifest?: Partial<VersionManifest>): VersionUpdateContext {
   const env = getRuntimeEnv()
   return {
-    version: manifest?.version || state.latestVersion || env.version,
+    version: manifest?.version || state.latestVersion || env.version || '',
     buildId: manifest?.buildId || state.latestBuildId || env.buildId,
     buildTime: manifest?.buildTime || state.latestBuildTime || env.buildTime,
     isEmbedded: Boolean((window as any).$wujie)
@@ -147,130 +150,17 @@ function resolveTexts(): Required<VersionUpdateTexts> {
   }
 }
 
-function syncIndicatorTexts() {
+function syncTextState() {
   const texts = resolveTexts()
+  state.title = texts.title
+  state.message = texts.message
+  state.confirmText = texts.confirmText
+  state.cancelText = texts.cancelText
   state.indicatorText = texts.indicatorText
   state.indicatorTitle = texts.indicatorTitle
-}
-
-function getDialogOptions(): VersionDialogOptions {
-  const texts = resolveTexts()
-  return {
-    title: texts.title,
-    message: texts.message,
-    confirmText: texts.confirmText,
-    cancelText: texts.cancelText
-  }
-}
-
-function createDefaultDialogRenderer() {
-  return (dialogOptions: VersionDialogOptions) =>
-    new Promise<boolean>((resolve) => {
-      const previousDialog = document.getElementById(DEFAULT_DIALOG_NAMESPACE)
-      if (previousDialog) {
-        previousDialog.remove()
-      }
-
-      const overlay = document.createElement('div')
-      overlay.id = DEFAULT_DIALOG_NAMESPACE
-      overlay.style.position = 'fixed'
-      overlay.style.inset = '0'
-      overlay.style.zIndex = '9999'
-      overlay.style.display = 'flex'
-      overlay.style.alignItems = 'center'
-      overlay.style.justifyContent = 'center'
-      overlay.style.background = 'rgba(15, 23, 42, 0.45)'
-
-      const panel = document.createElement('div')
-      panel.style.width = 'min(420px, calc(100vw - 32px))'
-      panel.style.background = '#ffffff'
-      panel.style.borderRadius = '16px'
-      panel.style.boxShadow = '0 24px 64px rgba(15, 23, 42, 0.18)'
-      panel.style.padding = '20px'
-      panel.style.boxSizing = 'border-box'
-      panel.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-
-      const title = document.createElement('div')
-      title.textContent = dialogOptions.title
-      title.style.fontSize = '18px'
-      title.style.fontWeight = '700'
-      title.style.color = '#111827'
-      title.style.marginBottom = '10px'
-
-      const message = document.createElement('div')
-      message.textContent = dialogOptions.message
-      message.style.fontSize = '14px'
-      message.style.lineHeight = '1.7'
-      message.style.color = '#4b5563'
-      message.style.marginBottom = '18px'
-
-      const actions = document.createElement('div')
-      actions.style.display = 'flex'
-      actions.style.justifyContent = 'flex-end'
-      actions.style.gap = '10px'
-
-      const cancelButton = document.createElement('button')
-      cancelButton.type = 'button'
-      cancelButton.textContent = dialogOptions.cancelText
-      cancelButton.style.height = '36px'
-      cancelButton.style.padding = '0 14px'
-      cancelButton.style.border = '1px solid #d1d5db'
-      cancelButton.style.borderRadius = '10px'
-      cancelButton.style.background = '#ffffff'
-      cancelButton.style.color = '#374151'
-      cancelButton.style.cursor = 'pointer'
-
-      const confirmButton = document.createElement('button')
-      confirmButton.type = 'button'
-      confirmButton.textContent = dialogOptions.confirmText
-      confirmButton.style.height = '36px'
-      confirmButton.style.padding = '0 14px'
-      confirmButton.style.border = 'none'
-      confirmButton.style.borderRadius = '10px'
-      confirmButton.style.background = '#2563eb'
-      confirmButton.style.color = '#ffffff'
-      confirmButton.style.cursor = 'pointer'
-
-      const cleanup = (result: boolean) => {
-        window.removeEventListener('keydown', onKeydown)
-        overlay.remove()
-        resolve(result)
-      }
-
-      const onKeydown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          cleanup(false)
-        }
-      }
-
-      overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-          cleanup(false)
-        }
-      })
-      cancelButton.addEventListener('click', () => cleanup(false))
-      confirmButton.addEventListener('click', () => cleanup(true))
-      window.addEventListener('keydown', onKeydown)
-
-      actions.appendChild(cancelButton)
-      actions.appendChild(confirmButton)
-      panel.appendChild(title)
-      panel.appendChild(message)
-      panel.appendChild(actions)
-      overlay.appendChild(panel)
-      document.body.appendChild(overlay)
-      confirmButton.focus()
-    })
-}
-
-async function openConfirmDialog(context: VersionUpdateContext): Promise<boolean> {
-  const dialogOptions = getDialogOptions()
-
-  if (runtimeOptions.dialogRenderer) {
-    return runtimeOptions.dialogRenderer(dialogOptions, context)
-  }
-
-  return createDefaultDialogRenderer()(dialogOptions)
+  state.cardTitle = texts.cardTitle
+  state.cardMessage = texts.cardMessage
+  state.deferOptionText = texts.deferOptionText
 }
 
 function clearAppStorage() {
@@ -310,7 +200,8 @@ function clearPendingVersionState() {
   state.latestBuildId = ''
   state.latestVersion = ''
   state.latestBuildTime = ''
-  syncIndicatorTexts()
+  state.remindAt = 0
+  syncTextState()
 }
 
 function syncLocalVersion() {
@@ -434,12 +325,12 @@ async function applyUpdate(buildId: string) {
 }
 
 function updatePendingState(manifest: VersionManifest) {
-  syncIndicatorTexts()
+  syncTextState()
   state.hasPendingUpdate = true
   state.indicatorVisible = state.enableIndicator
   state.latestBuildId = manifest.buildId
-  state.latestVersion = manifest.version
-  state.latestBuildTime = manifest.buildTime
+  state.latestVersion = manifest.version || ''
+  state.latestBuildTime = manifest.buildTime || ''
 }
 
 async function emitDetected(manifest: VersionManifest) {
@@ -450,48 +341,21 @@ async function emitDetected(manifest: VersionManifest) {
   await runtimeOptions.onUpdateDetected(getUpdateContext(manifest))
 }
 
-async function showUpdatePrompt(manifest: VersionManifest) {
-  if (state.dialogVisible) {
-    return
-  }
-
+async function showUpdatePrompt(manifest: VersionManifest, force = false) {
   const remindAt = Number(localStorage.getItem(getStorageKey('version_remind_at')) || '0')
-  if (Date.now() < remindAt) {
+  state.remindAt = remindAt
+  // 命中稍后提醒冷却期时，只保留入口，不自动重新展开面板。
+  if (!force && Date.now() < remindAt) {
     updatePendingState(manifest)
-    logDebug('仍处于稍后更新冷却期，不弹窗', { remindAt, manifest })
+    logDebug('命中提醒冷却期，保留待更新入口', { remindAt, manifest })
     return
   }
 
-  state.dialogVisible = true
   updatePendingState(manifest)
   localStorage.setItem(getStorageKey('pending_version'), manifest.buildId)
-
-  if (!state.enableDialog) {
-    logDebug('已关闭弹窗能力，仅保留待更新状态', manifest)
-    state.dialogVisible = false
-    return
-  }
-
-  try {
-    const confirmed = await openConfirmDialog(getUpdateContext(manifest))
-    if (!confirmed) {
-      throw new Error('deferred')
-    }
-
-    if (runtimeOptions.onUpdateConfirmed) {
-      await runtimeOptions.onUpdateConfirmed(getUpdateContext(manifest))
-    }
-    await applyUpdate(manifest.buildId)
-  } catch (error) {
-    localStorage.setItem(getStorageKey('version_remind_at'), String(Date.now() + state.remindDelay))
-    logDebug('用户选择稍后更新', manifest)
-    if (runtimeOptions.onUpdateDeferred) {
-      await runtimeOptions.onUpdateDeferred(getUpdateContext(manifest))
-    }
-  } finally {
-    state.dialogVisible = false
-  }
+  logDebug(force ? '用户主动触发更新面板' : '已记录待更新状态', manifest)
 }
+
 
 async function checkVersion() {
   if (state.checking) {
@@ -538,7 +402,7 @@ async function checkVersion() {
 function bindLifecycle() {
   if (state.enableFocusCheck) {
     focusHandler = () => {
-      syncIndicatorTexts()
+      syncTextState()
       void checkVersion()
     }
     window.addEventListener('focus', focusHandler)
@@ -547,7 +411,7 @@ function bindLifecycle() {
   if (state.enableVisibilityCheck) {
     visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
-        syncIndicatorTexts()
+        syncTextState()
         void checkVersion()
       }
     }
@@ -556,7 +420,7 @@ function bindLifecycle() {
 
   if (state.pollInterval > 0) {
     timerId = window.setInterval(() => {
-      syncIndicatorTexts()
+      syncTextState()
       void checkVersion()
     }, state.pollInterval)
   }
@@ -577,11 +441,6 @@ function clearLifecycle() {
     window.clearInterval(timerId)
     timerId = null
   }
-
-  const previousDialog = document.getElementById(DEFAULT_DIALOG_NAMESPACE)
-  if (previousDialog) {
-    previousDialog.remove()
-  }
 }
 
 export function setVersionUpdateRuntimeEnv(runtimeEnv: VersionRuntimeEnv) {
@@ -593,7 +452,7 @@ export function setVersionUpdateRuntimeEnv(runtimeEnv: VersionRuntimeEnv) {
 }
 
 export function refreshVersionUpdateTexts() {
-  syncIndicatorTexts()
+  syncTextState()
 }
 
 export function initVersionUpdate(options: VersionUpdateOptions = {}) {
@@ -604,7 +463,6 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
 
   runtimeOptions.pollInterval = options.pollInterval ?? DEFAULT_POLL_INTERVAL
   runtimeOptions.remindDelay = options.remindDelay ?? DEFAULT_REMIND_DELAY
-  runtimeOptions.enableDialog = options.enableDialog ?? true
   runtimeOptions.enableIndicator = options.enableIndicator ?? true
   runtimeOptions.enableFocusCheck = options.enableFocusCheck ?? true
   runtimeOptions.enableVisibilityCheck = options.enableVisibilityCheck ?? true
@@ -616,7 +474,6 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
     ...runtimeOptions.runtimeEnv,
     ...(options.runtimeEnv || {})
   }
-  runtimeOptions.dialogRenderer = options.dialogRenderer
   runtimeOptions.onUpdateDetected = options.onUpdateDetected
   runtimeOptions.onUpdateDeferred = options.onUpdateDeferred
   runtimeOptions.onUpdateConfirmed = options.onUpdateConfirmed
@@ -626,18 +483,16 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
   state.initialized = true
   state.pollInterval = runtimeOptions.pollInterval
   state.remindDelay = runtimeOptions.remindDelay
-  state.enableDialog = runtimeOptions.enableDialog
   state.enableIndicator = runtimeOptions.enableIndicator
   state.enableFocusCheck = runtimeOptions.enableFocusCheck
   state.enableVisibilityCheck = runtimeOptions.enableVisibilityCheck
   state.refreshStrategy = runtimeOptions.refreshStrategy
   state.debug = runtimeOptions.debug
-  syncIndicatorTexts()
+  syncTextState()
 
   logDebug('版本更新服务初始化完成', {
     pollInterval: state.pollInterval,
     remindDelay: state.remindDelay,
-    enableDialog: state.enableDialog,
     enableIndicator: state.enableIndicator,
     enableFocusCheck: state.enableFocusCheck,
     enableVisibilityCheck: state.enableVisibilityCheck,
@@ -645,7 +500,6 @@ export function initVersionUpdate(options: VersionUpdateOptions = {}) {
     versionUrl: runtimeOptions.versionUrl,
     storagePrefix: runtimeOptions.storagePrefix,
     runtimeEnv: getRuntimeEnv(),
-    hasCustomDialogRenderer: Boolean(runtimeOptions.dialogRenderer),
     hasDynamicTexts: typeof runtimeOptions.texts === 'function'
   })
 
@@ -658,16 +512,13 @@ export function destroyVersionUpdate() {
   clearLifecycle()
   state.initialized = false
   state.checking = false
-  state.dialogVisible = false
   logDebug('版本更新服务已销毁')
 }
 
-export function requestVersionUpdate() {
+export async function confirmVersionUpdate() {
   if (!state.hasPendingUpdate || !state.latestBuildId) {
     return
   }
-
-  syncIndicatorTexts()
 
   const context = getUpdateContext({
     buildId: state.latestBuildId,
@@ -675,27 +526,68 @@ export function requestVersionUpdate() {
     buildTime: state.latestBuildTime
   })
 
-  if (!state.enableDialog) {
-    Promise.resolve(runtimeOptions.onUpdateConfirmed?.(context))
-      .then(() => applyUpdate(context.buildId))
-      .catch((error) => {
-        console.error('[version-update] 标识触发更新失败', error)
-      })
+  if (runtimeOptions.onUpdateConfirmed) {
+    await runtimeOptions.onUpdateConfirmed(context)
+  }
+
+  await applyUpdate(context.buildId)
+}
+
+export async function deferVersionUpdate(duration = state.remindDelay) {
+  if (!state.hasPendingUpdate || !state.latestBuildId) {
     return
   }
 
-  void showUpdatePrompt({
-    buildId: context.buildId,
-    version: context.version,
-    buildTime: context.buildTime || ''
-  })
+  state.remindAt = duration > 0 ? Date.now() + duration : 0
+
+  if (state.remindAt > 0) {
+    localStorage.setItem(getStorageKey('version_remind_at'), String(state.remindAt))
+  } else {
+    localStorage.removeItem(getStorageKey('version_remind_at'))
+  }
+
+  if (runtimeOptions.onUpdateDeferred) {
+    await runtimeOptions.onUpdateDeferred(
+      getUpdateContext({
+        buildId: state.latestBuildId,
+        version: state.latestVersion,
+        buildTime: state.latestBuildTime
+      })
+    )
+  }
 }
+
+export function requestVersionUpdate() {
+  if (!state.hasPendingUpdate || !state.latestBuildId) {
+    return
+  }
+
+  syncTextState()
+
+  const context = getUpdateContext({
+    buildId: state.latestBuildId,
+    version: state.latestVersion,
+    buildTime: state.latestBuildTime
+  })
+
+  Promise.resolve(runtimeOptions.onUpdateConfirmed?.(context))
+    .then(() => applyUpdate(context.buildId))
+    .catch((error) => {
+      console.error('[version-update] 手动触发更新失败', error)
+    })
+}
+
 
 export function useVersionUpdate() {
   return {
     ...toRefs(readonly(state)),
+    confirmVersionUpdate,
+    deferVersionUpdate,
     requestVersionUpdate,
     refreshVersionUpdateTexts
   }
 }
+
+
+
 
