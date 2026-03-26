@@ -1,6 +1,6 @@
 {
   "name": "vue3-version-update",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Vue3 前端版本更新运行时公共包，统一处理版本探测、更新提示与待更新标识。",
   "type": "module",
   "license": "MIT",

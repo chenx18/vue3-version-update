@@ -57,7 +57,7 @@ const { indicatorVisible } = useVersionUpdate()
 
 ## 运行时环境
 
-如果项目使用 `vite-version-manifest`，当前版本信息通常会在构建期自动注入。  
+如果项目使用 `vite-version-manifest`，当前版本信息通常会在开发与构建阶段自动注入，业务项目一般不需要手动传 `runtimeEnv`。  
 如果不是 Vite 项目，也可以手动传入运行时环境：
 
 ```ts
@@ -160,6 +160,7 @@ interface VersionUpdateOptions {
 
 - `versionUrl`
   版本清单地址，默认 `version.json`。
+  在 Wujie 等微前端场景下，组件会优先按子应用自己的运行地址解析该路径，而不是直接使用基座域名。
 
 - `storagePrefix`
   本地存储前缀，用于隔离多项目缓存键。
@@ -184,6 +185,7 @@ interface VersionUpdateOptions {
 
 - `runtimeEnv`
   当前运行环境版本信息。
+  仅在未接入 `vite-version-manifest`，或需要手动覆盖运行环境时再传。
 
 - `texts`
   自定义文案，支持对象或函数。
@@ -385,6 +387,11 @@ initVersionUpdate({
   refreshStrategy: 'top'
 })
 ```
+
+说明：
+
+- 当项目运行在 Wujie 子应用中时，`vue3-version-update` 会优先基于 `$wujie.location` 解析 `version.json`
+- 推荐仍然搭配 `vite-version-manifest`，这样运行时还能自动拿到 `__APP_BASE_URL__`
 
 ### 业务自己接管刷新
 

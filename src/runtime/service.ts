@@ -17,7 +17,6 @@ const APP_VERSION_QUERY_KEY = '__app_v'
 const DEFAULT_POLL_INTERVAL = 5 * 60 * 1000
 const DEFAULT_REMIND_DELAY = 10 * 60 * 1000
 const DEFAULT_VERSION_URL = 'version.json'
-const DEFAULT_BASE_URL = '/'
 const DEFAULT_ANCHOR: VersionUpdateAnchor = 'header'
 const DEV_MOCK_QUERY_KEY = '__mock_version_update'
 const DEV_MOCK_BUILD_ID = 'mock-current-build'
@@ -119,7 +118,9 @@ function isDevMockEnabled() {
   return new URLSearchParams(window.location.search).get(DEV_MOCK_QUERY_KEY) === '1'
 }
 
-function readGlobalString(name: '__APP_VERSION__' | '__APP_BUILD_ID__' | '__APP_BUILD_TIME__') {
+function readGlobalString(
+  name: '__APP_VERSION__' | '__APP_BUILD_ID__' | '__APP_BUILD_TIME__' | '__APP_BASE_URL__'
+) {
   const value = (globalThis as Record<string, unknown>)[name]
   return typeof value === 'string' ? value : ''
 }
@@ -132,7 +133,7 @@ function getRuntimeEnv() {
       ? DEV_MOCK_BUILD_ID
       : runtimeOptions.runtimeEnv.buildId || readGlobalString('__APP_BUILD_ID__'),
     buildTime: runtimeOptions.runtimeEnv.buildTime || readGlobalString('__APP_BUILD_TIME__'),
-    baseUrl: runtimeOptions.runtimeEnv.baseUrl || DEFAULT_BASE_URL
+    baseUrl: runtimeOptions.runtimeEnv.baseUrl || readGlobalString('__APP_BASE_URL__')
   }
 }
 
@@ -258,13 +259,24 @@ function syncLocalVersion() {
   })
 }
 
+function getActiveLocationHref() {
+  const wujieLocation = (window as any).$wujie?.location
+  if (wujieLocation && typeof wujieLocation.href === 'string') {
+    return wujieLocation.href
+  }
+
+  return window.location.href
+}
+
 function buildVersionManifestUrl() {
   const customVersionUrl =
     typeof runtimeOptions.versionUrl === 'function' ? runtimeOptions.versionUrl() : runtimeOptions.versionUrl
   const manifestUrl = customVersionUrl || DEFAULT_VERSION_URL
-  const baseUrl = getRuntimeEnv().baseUrl || DEFAULT_BASE_URL
-  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-  const versionUrl = new URL(manifestUrl, window.location.origin + normalizedBaseUrl)
+  const baseUrl = getRuntimeEnv().baseUrl
+  const versionBase = baseUrl
+    ? new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`, getActiveLocationHref())
+    : new URL(getActiveLocationHref())
+  const versionUrl = new URL(manifestUrl, versionBase.toString())
   versionUrl.searchParams.set('t', Date.now().toString())
   return versionUrl.toString()
 }
