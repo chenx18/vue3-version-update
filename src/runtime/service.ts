@@ -286,11 +286,7 @@ async function fetchVersionManifest(): Promise<VersionManifest> {
   logDebug('开始请求版本清单', { requestUrl })
 
   const response = await fetch(requestUrl, {
-    cache: 'no-store',
-    headers: {
-      Pragma: 'no-cache',
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    }
+    cache: 'no-store'
   })
 
   if (!response.ok) {

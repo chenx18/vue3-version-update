@@ -392,6 +392,7 @@ initVersionUpdate({
 
 - 当项目运行在 Wujie 子应用中时，`vue3-version-update` 会优先基于 `$wujie.location` 解析 `version.json`
 - 推荐仍然搭配 `vite-version-manifest`，这样运行时还能自动拿到 `__APP_BASE_URL__`
+- 如果基座与子应用跨域，`version.json` 仍然需要满足浏览器跨域要求；更稳的做法是让基座通过同域代理暴露一个 `versionUrl`
 
 ### 业务自己接管刷新
 
